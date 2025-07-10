@@ -1,6 +1,5 @@
-
 <?php 
-include 'sidebar.php';
+include 'clerk_sidebar.php';
 ?>
 
  <!DOCTYPE html>
@@ -8,7 +7,7 @@ include 'sidebar.php';
  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Inventory Clerk</title>
     <style>
        
     </style>

@@ -1,245 +1,223 @@
+<?php
+require_once 'php/config.php';
+require_once 'model_salesReport.php';
+
+// Initialize SalesReport with the database connection
+$salesReport = new SalesReport(mysqli: $mysqli);
+
+// Get report parameters
+$start_date = $_GET['start_date'] ?? date('Y-m-01');
+$end_date = $_GET['end_date'] ?? date('Y-m-d');
+$cashier_id = $_GET['cashier_id'] ?? '';
+$payment_method = $_GET['payment_method'] ?? '';
+
+// Get cashier list
+$cashiers = [];
+$cashierQuery = $mysqli->query("SELECT user_id, full_name FROM users WHERE role_id = 2");
+while ($row = $cashierQuery->fetch_assoc()) {
+  $cashiers[] = $row;
+}
+
+try {
+  $reportData = $salesReport->generateReport($start_date, $end_date, $cashier_id, $payment_method);
+
+  if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="sales_report.csv"');
+
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Date', 'Transactions', 'Items Sold', 'Gross Sales', 'Discounts', 'Net Sales', 'Profit']);
+
+    foreach ($reportData as $row) {
+      fputcsv($output, [
+        $row['date'],
+        $row['transactions'],
+        $row['items_sold'],
+        number_format($row['total_sales'], 2),
+        number_format($row['total_discounts'], 2),
+        number_format($row['total_sales'] - $row['total_discounts'], 2),
+        number_format($row['gross_profit'], 2)
+      ]);
+    }
+    fclose($output);
+    exit;
+  }
+} catch (Exception $e) {
+  $error = $e->getMessage();
+}
+
+$mysqli->close();
+include 'clerk_sidebar.php';
+?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calamity Management</title>
+  <title>Sales Report</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.28"></script>
   <style>
-    .status-active { color: red; }
-    .status-recovery { color: orange; }
-    .status-resolved { color: green; }
+    body {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 70px;
+    }
+
+    .card {
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: none;
+      width: 1170px;
+    }
+
+    .card-header {
+      color: white;
+      border-radius: 10px 10px 0 0 !important;
+      padding: 1rem 1.5rem;
+    }
   </style>
 </head>
-<body>
-  <?php 
-  include 'sidebar.php';
-  ?>
-<main class="main container" id="main">
-  <h3>Calamity Data Management</h3>
-  <div class="card p-4">
-    <form id="calamityForm">
-      <div class="row mb-3">
-        <div class="col-md-3">
-          <label for="calamityType" class="form-label">Calamity Type</label>
-          <select id="calamityType" name="calamityType" class="form-select" required onchange="toggleSeverityLevel()">
-            <option value="Flood">Flood</option>
-            <option value="Typhoon">Typhoon</option>
-            <option value="Earthquake">Earthquake</option>
-            <option value="Fire">Fire</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="calamityName" class="form-label">Calamity Name/ID</label>
-          <input type="text" id="calamityName" name="calamityName" class="form-control" required>
-        </div>
-        <div class="col-md-3" id="severityLevelContainer">
-          <label for="intensityLevel" class="form-label">Intensity Level</label>
-          <select id="intensityLevel" name="intensityLevel" class="form-select">
-            <option>Severe Tropical Storm</option>
-            <option>Super Typhoon</option>
-            <option>High Intensity</option>
-            <option>Moderate</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="date" class="form-label">Date</label>
-          <input type="date" id="date" name="date" class="form-control" required>
-        </div>
+
+<body class="bg-light">
+  <main class="main container py-5" id="main">
+    <div class="card shadow">
+      <div class="card-header d-flex justify-content-between align-items-center bg-primary">
+        <h4><i class="fas fa-house-damage me-2"></i>Sales Report</h4>
       </div>
-      <div class="row mb-3">
-        <div class="col-md-3" id="floodRiskLevelContainer">
-          <label for="floodRiskLevel" class="form-label">Flood Risk Level</label>
-          <select id="floodRiskLevel" name="floodRiskLevel" class="form-select">
-            <option>Medium</option>
-            <option>High</option>
-            <option>Low</option>
-          </select>
+      <div class="card-body p-4 ">
+        <form method="GET" class="mb-4">
+          <!-- Filter Buttons -->
+          <label for="" class="mb-5">Filter:</label>
+          <a href="sales_daily.php" class="btn btn-outline-primary">Daily</a>
+          <a href="sales_weekly.php" class="btn btn-outline-primary">Weekly</a>
+          <a href="sales_monthly.php" class="btn btn-outline-primary">Monthly</a>
+          <div class="col-md">
+            <div class="row">
+              <div class="col-md-3">
+                <label>Date From</label>
+                <input type="date" name="start_date" class="form-control" value="<?= htmlspecialchars($start_date) ?>">
+              </div>
+              <div class="col-md-3">
+                <label>Date To</label>
+                <input type="date" name="end_date" class="form-control" value="<?= htmlspecialchars($end_date) ?>">
+              </div>
+              <div class="col-md-3">
+                <label>Cashier</label>
+                <select name="cashier_id" class="form-control">
+                  <option value="">All Cashiers</option>
+                  <?php foreach ($cashiers as $cashier): ?>
+                    <option value="<?= $cashier['user_id'] ?>" <?= ($cashier_id == $cashier['user_id']) ? 'selected' : '' ?>>
+                      <?= htmlspecialchars($cashier['full_name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Generate Report</button>
+              </div>
+            </div>
+        </form>
+
+        <div class="mb-3">
+          <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>"
+            class="btn btn-secondary mt-3">Export
+            to CSV</a>
         </div>
-        <div class="col-md-3" id="fireSeverityContainer">
-          <label for="fireSeverityLevel" class="form-label">Fire Severity Level</label>
-          <select id="fireSeverityLevel" name="fireSeverityLevel" class="form-select">
-            <option>Low</option>
-            <option>Moderate</option>
-            <option>High</option>
-            <option>Extreme</option>
-          </select>
-        </div>
-        <div class="col-md-3" id="earthquakeMagnitudeContainer">
-          <label for="magnitudeLevel" class="form-label">Magnitude Level</label>
-          <select id="magnitudeLevel" name="magnitudeLevel" class="form-select">
-            <option>Minor (2.5 or less)</option>
-            <option>Light (2.5 to 5.4)</option>
-            <option>Moderate (5.5 to 6.0)</option>
-            <option>Strong (6.1 to 6.9)</option>
-            <option>Major (7.0 to 7.9)</option>
-            <option>Great (8.0 or greater)</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="status" class="form-label">Status</label>
-          <select id="status" name="status" class="form-select">
-            <option value="Active">Active</option>
-            <option value="Recovery">Recovery</option>
-            <option value="Resolved">Resolved</option>
-          </select>
-        </div>
+
+        <?php if (isset($error)): ?>
+          <div class="alert alert-danger">Error: <?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($reportData)): ?>
+          <?php
+          $totalSales = array_sum(array_column($reportData, 'total_sales'));
+          $totalTransactions = array_sum(array_column($reportData, 'transactions'));
+          $avgSale = $totalTransactions > 0 ? $totalSales / $totalTransactions : 0;
+          ?>
+          <div class="mb-4">
+            <div class="row">
+              <div class="col-md-3">
+                <h5>Total Sales: ₱<?= number_format($totalSales, 2) ?></h5>
+              </div>
+              <div class="col-md-3">
+                <h5>Total Transactions: <?= $totalTransactions ?></h5>
+              </div>
+              <div class="col-md-3">
+                <h5>Average Sale: ₱<?= number_format($avgSale, 2) ?></h5>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CHART -->
+          <div>
+            <canvas id="myChart"></canvas>
+          </div>
+
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Transactions</th>
+                <th>Items Sold</th>
+                <th>Gross Sales</th>
+                <th>Discounts</th>
+                <th>Net Sales</th>
+                <th>Profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($reportData as $row): ?>
+                <tr>
+                  <td><?= htmlspecialchars($row['date']) ?></td>
+                  <td><?= htmlspecialchars($row['transactions']) ?></td>
+                  <td><?= htmlspecialchars($row['items_sold']) ?></td>
+                  <td>₱<?= number_format($row['total_sales'], 2) ?></td>
+                  <td>₱<?= number_format($row['total_discounts'], 2) ?></td>
+                  <td>₱<?= number_format($row['total_sales'] - $row['total_discounts'], 2) ?></td>
+                  <td>₱<?= number_format($row['gross_profit'], 2) ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <p>No sales data found for the selected period.</p>
+        <?php endif; ?>
       </div>
-      <button type="submit" class="btn btn-success">Submit</button>
-    </form>
-  </div>
+    </div>
+  </main>
 
-  <h4 class="mt-5">Calamity History</h4>
-  <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search calamities" class="form-control mb-3">
-  <table id="historyTable" class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Name</th>
-        <th>Date</th>
-        <th>Intensity</th>
-        <th>Flood Risk</th>
-        <th>Fire Severity</th>
-        <th>Magnitude</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <?php if (!empty($calamities)): ?>
-        <?php foreach ($calamities as $calamity): ?>
-          <tr data-id="<?php echo $calamity['id']; ?>
-            <td><?php echo $calamity['calamityType']; ?></td>
-            <td><?php echo $calamity['calamityName']; ?></td>
-            <td><?php echo date("F j, Y", strtotime($calamity['date'])); ?></td>
-            <td><?php echo $calamity['calamityType'] == 'Typhoon' ? $calamity['intensityLevel'] : ''; ?></td>
-            <td><?php echo $calamity['calamityType'] == 'Flood' ? $calamity['floodRiskLevel'] : ''; ?></td>
-            <td><?php echo $calamity['calamityType'] == 'Fire' ? $calamity['fireSeverityLevel'] : ''; ?></td>
-            <td><?php echo $calamity['calamityType'] == 'Earthquake' ? $calamity['magnitudeLevel'] : ''; ?></td>
-            <td class="status-<?php echo strtolower($calamity['status']); ?>"><?php echo $calamity['status']; ?></td>
-            <td>
-            <button class="btn btn-sm btn-success edit-status-btn">Edit</button>
-          </td>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-      <?php else: ?>
-        <tr><td colspan="9" class="text-center">No calamities found</td></tr>
-      <?php endif; ?>
-    </tbody>
-  </table>
-  <button class="btn btn-success" onclick="redirectToTable();">
-   View Table
-</button>
-</main>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
+  <script>
+    const chartLabels = <?= json_encode(array_column($reportData, 'date')) ?>;
+    const salesData = <?= json_encode(array_column($reportData, 'total_sales')) ?>;
 
-function redirectToTable() {
-    window.location.href = 'calamityData.php';
-  }
-  // Toggle severity level visibility
-  function toggleSeverityLevel() {
-    const type = document.getElementById("calamityType").value;
-    document.getElementById("intensityLevel").parentElement.style.display = type === "Typhoon" ? "block" : "none";
-    document.getElementById("floodRiskLevelContainer").style.display = type === "Flood" ? "block" : "none";
-    document.getElementById("fireSeverityContainer").style.display = type === "Fire" ? "block" : "none";
-    document.getElementById("earthquakeMagnitudeContainer").style.display = type === "Earthquake" ? "block" : "none";
-  }
-
-  function searchTable() {
-      const input = document.getElementById("searchInput").value.toUpperCase();
-      const rows = document.querySelectorAll("#historyTable tbody tr");
-
-      rows.forEach(row => {
-        const text = row.innerText.toUpperCase();
-        row.style.display = text.includes(input) ? "" : "none";
-      });
-    }
-    function redirectToTable() {
-    window.location.href = 'calamityData.php';
-  }
-  $(document).on("click", ".edit-status-btn", function () {
-      const row = $(this).closest("tr");
-      const calamityId = row.data("id");
-      const currentStatus = row.find("span").text();
-
-      const statusDropdown = `
-        <select class="form-select form-select-sm calamity-status-dropdown">
-          <option value="Active" ${currentStatus === "Active" ? "selected" : ""}>Active</option>
-          <option value="Recovery" ${currentStatus === "Recovery" ? "selected" : ""}>Recovery</option>
-          <option value="Resolved" ${currentStatus === "Resolved" ? "selected" : ""}>Resolved</option>
-        </select>
-      `;
-
-      row.find("td:nth-child(😎").html(statusDropdown);
-
-      $(this)
-        .removeClass("edit-status-btn btn-success")
-        .addClass("save-status-btn btn-danger")
-        .text("Save");
-    });
-
-    $(document).on("click", ".save-status-btn", function () {
-      const row = $(this).closest("tr");
-      const calamityId = row.data("id");
-      const newStatus = row.find(".calamity-status-dropdown").val();
-
-      $.ajax({
-        url: "",
-        type: "POST",
-        data: {
-          id: calamityId,
-          status: newStatus,
-          action: "update_status"
-        },
-        dataType: "json",
-        success: function (response) {
-          alert(response.message);
-          if (response.success) {
-            row
-              .find("td:nth-child(😎")
-              .html(
-                <span class="status-${newStatus.toLowerCase()}">${newStatus}</span>
-              );
-            row
-              .find(".save-status-btn")
-              .removeClass("save-status-btn btn-danger")
-              .addClass("edit-status-btn btn-success")
-              .text("Edit");
+    const ctx = document.getElementById('myChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Daily Sales (₱)',
+          data: salesData,
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
           }
-        },
-        error: function () {
-          alert("An unexpected error occurred.");
         }
-      });
+      }
     });
-
-  // Form submission with AJAX
-  $("#calamityForm").submit(function (e) {
-    e.preventDefault();
-    const formData = $(this).serializeArray();
-    formData.push({ name: "action", value: "save_calamity" });
-
-    $.post("", formData, function (response) {
-      Swal.fire(response.success ? "Success" : "Error", response.message, response.success ? "success" : "error")
-        .then(() => location.reload());
-    }, "json");
-  });
-
-  // Update status
-  function updateStatus(id, status) {
-    $.post("", { action: "update_status", id, status }, function (response) {
-      Swal.fire(response.success ? "Success" : "Error", response.message, response.success ? "success" : "error")
-        .then(() => location.reload());
-    }, "json");
-  }
-
-  // Initialize visibility on page load
-  toggleSeverityLevel();
-</script>
+  </script>
 </body>
+
 </html>

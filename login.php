@@ -1,69 +1,43 @@
-<?php
-// session_start();
-// include 'php/config.php';
+<?php 
+session_start();
 
+	include 'php/config.php';
 
+	if($_SERVER['REQUEST_METHOD'] == "POST") {
+    // Sanitize inputs
+    $id_number = mysqli_real_escape_string($con, $_POST['id_number']);
+    $password = $_POST['password'];
 
-// if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "login") {
-//     $id_number = $_POST["id_number"];
-//     $password = $_POST["password"];
+    if(!empty($id_number) && !empty($password) && !is_numeric($id_number)) {
+        // Use prepared statement to prevent SQL injection
+        $query = "SELECT * FROM users WHERE user_id = ? LIMIT 1";
+        $stmt = mysqli_prepare($con, $query);
+        mysqli_stmt_bind_param($stmt, 's', $id_number);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
 
-//     $sql = "SELECT * FROM users WHERE id_number = '$id_number' AND password = '$password'";
-//     $result = $conn->query($sql);
+        if($result && mysqli_num_rows($result) > 0) {
+            $user_data = mysqli_fetch_assoc($result);
+            
+            // Verify hashed password
+            if(password_verify($password, $user_data['password'])) {
+                // Regenerate session ID for security
+                session_regenerate_id(true);
+                
+                $_SESSION['user_id'] = $user_data['user_id'];
+                $_SESSION['user_name'] = $user_data['full_name'];
+                
+                header("Location: dashboard.php");
+                exit();
+            }
+        }
+        echo "Invalid username or password!";
+    } else {
+        echo "Please enter valid credentials!";
+    }
+}
 
-//     if ($result->num_rows > 0) {
-//         $user = $result->fetch_assoc();
-//         $_SESSION["user"] = $user;
-//         header("Location: index.php?page=users_table");
-//         exit();
-//     } else {
-//         $error = "Invalid credentials.";
-//     }
-// }
-
-// if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "register") {
-//     $name = $_POST["name"];
-//     $id_number = $_POST["id_number"];
-//     $password = $_POST["password"];
-//     $email = $_POST["email"];
-//     $function = $_POST["function"];
-//     $designation = $_POST["designation"];
-//     $employed = $_POST["employed"]; 
-
-//     $stmt = $conn->prepare("INSERT INTO users (name, id_number, password, email, function, designation, employed)
-//                             VALUES (?, ?, ?, ?, ?, ?, ?)");
-//     $stmt->bind_param("sssssss", $name, $id_number, $password, $email, $function, $designation, $employed);
-
-//     if ($stmt->execute()) {
-//         $success = "Registration successful! You can now log in.";
-//     } else {
-//         $error = "Error registering user: " . $stmt->error;
-//     }
-// }
-
-// if (isset($_GET['page']) && $_GET['page'] === 'forgot_password') {
-//     if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "reset_password") {
-//         $email = $_POST["email"];
-//         $sql = "SELECT * FROM users WHERE email = '$email'";
-//         $result = $conn->query($sql);
-
-//         if ($result->num_rows > 0) {
-//             $user = $result->fetch_assoc();
-//             $new_password = "newpassword";
-//             $update_sql = "UPDATE users SET password = '$new_password' WHERE email = '$email'";
-
-//             if ($conn->query($update_sql) === TRUE) {
-//                 $success = "Password reset successful. Your new password is: $new_password";
-//             } else {
-//                 $error = "Error resetting password.";
-//             }
-//         } else {
-//             $error = "No account found with that email.";
-//         }
-//     }
-// }
-// ?>
-<!-- para sa usertable naman to -->
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -117,7 +91,6 @@
                 <p class="text-dark fs-2 fw-bold">Be Verified</p>
                 <small class="text-dark text-wrap text-center" style="width: 17rem;"></small>
             </div>
-
             <div class="col-md-6 right-box">
                 <div class="row align-items-center">
                     <div class=" header-text mb-4 text-center">
@@ -125,7 +98,7 @@
                         <p class="mt-3 fw-bold fs-4">AGENT LOGIN</p>
                         <?php if (isset($error))
                             echo "<div class='alert alert-danger'>$error</div>"; ?>
-                        <form method="post">
+                        <form method="POST">
                             <input type="hidden" name="action" value="login">
                             <div class="form-floating mb-3">
                                 <input type="text" class="form-control form-control-lg bg-light fs-6" id="id_number"
@@ -144,5 +117,4 @@
             </div>
         </div>
         </body>
-
 </html>

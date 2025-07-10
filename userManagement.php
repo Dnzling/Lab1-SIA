@@ -1,6 +1,10 @@
 <?php
-include 'sidebar.php';
+include 'admin_sidebar.php';
+include 'php/config.php';
+include 'model_user.php';
 
+$userModel = new UserModel($mysqli);
+$users = $userModel->getAllUsers();
 ?>
 
 <!DOCTYPE html>
@@ -9,13 +13,13 @@ include 'sidebar.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evacuation Center Information</title>
+    <title>Account Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body {
             display: flex;
             justify-content: flex-end;
-            /* Aligns children to the right */
             margin-top: 70px;
         }
 
@@ -23,211 +27,315 @@ include 'sidebar.php';
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             border: none;
-            width: 1150px;
+            width: 1170px;
         }
 
         .card-header {
-            background-color: #0d6efd;
-            color: white;
             border-radius: 10px 10px 0 0 !important;
             padding: 1rem 1.5rem;
-        }
-
-        h4 {
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .form-label {
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-control {
-            border-radius: 5px;
-            padding: 0.5rem 1rem;
-            border: 1px solid #ced4da;
-        }
-
-        .form-control:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-
-        .btn-success {
-            background-color: #198754;
-            border: none;
-            padding: 0.5rem 1.5rem;
-            font-weight: 500;
-            border-radius: 5px;
-        }
-
-        .btn-success:hover {
-            background-color: #157347;
-        }
-
-        .required-field::after {
-            content: " *";
-            color: red;
         }
     </style>
 </head>
 
-<body class="link-underline-opacity-0 bg-light">
-    <main class="main container py-5" id="main">
+<body class="bg-light">
+    <main class="container py-5">
         <div class="card shadow">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4><i class="fas fa-house-damage me-2"></i>Account Management</h4>
+                <h4>Account Management</h4>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">Add
+                    User</button>
             </div>
-            <div class="card-body p-4">
-                <form method="POST" id="evacuationForm">
-                <div class="row mb-4">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="centerName" class="form-label required-field">Evacuation Center
-                                                Name</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="fas fa-building"></i></span>
-                                                <input type="text" class="form-control" id="centerName"
-                                                    name="centerName" placeholder="Enter Center Name" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="centerType" class="form-label required-field">Type of
-                                                Center</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="fas fa-tag"></i></span>
-                                                <select class="form-select" id="centerType" name="centerType" required>
-                                                    <option value="" selected disabled>Select Center Type</option>
-                                                    <option value="School">School</option>
-                                                    <option value="Community Center">Community Center</option>
-                                                    <option value="Gymnasium">Gymnasium</option>
-                                                    <option value="Church">Church</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+            <div class="card-body">
+                <table class="table table-transparent table-hover">
+                    <thead class="text-uppercase color-secondary">
+                        <tr>
+                            <th>ID Number</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($users as $user): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($user['user_id']) ?></td>
+                                <td class="text-capitalize"><?= htmlspecialchars($user['full_name']) ?></td>
+                                <td>
+                                    <?= $user['role_id'] == 1 ? 'Admin' : ($user['role_id'] == 2 ? 'Inventory Clerk' : 'Cashier') ?>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                        data-bs-target="#editUserModal<?= $user['user_id'] ?>">Edit</button>
+                                    <button onclick="deleteUser('<?= $user['user_id'] ?>')">Remove</button>
+                                </td>
+                            </tr>
 
-                                    <div class="row mb-4">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="street" class="form-label required-field">Street</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="fas fa-road"></i></span>
-                                                <input type="text" class="form-control" id="street" name="street"
-                                                    placeholder="Enter Street" required>
+                            <!-- Edit Modal -->
+                            <div class="modal fade" id="editUserModal<?= $user['user_id'] ?>" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Edit User</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="edit-user-form" data-user-id="<?= $user['user_id'] ?>">
+                                                <input type="hidden" value="<?= $user['user_id'] ?>">
+                                                <div class="mb-3">
+                                                    <label>Full Name</label>
+                                                    <input type="text" class="form-control full-name"
+                                                        value="<?= htmlspecialchars($user['full_name']) ?>">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label>Role</label>
+                                                    <select class="form-select role-id">
+                                                        <option value="1" <?= $user['role_id'] == 1 ? 'selected' : '' ?>>Admin
+                                                        </option>
+                                                        <option value="2" <?= $user['role_id'] == 2 ? 'selected' : '' ?>>
+                                                            Inventory Clerk</option>
+                                                        <option value="3" <?= $user['role_id'] == 3 ? 'selected' : '' ?>>
+                                                            Cashier</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label>New Password (optional)</label>
+                                                    <input type="password" class="form-control password">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label>Confirm Password</label>
+                                                    <input type="password" class="form-control confirmpassword">
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="landmark" class="form-label required-field">Landmark</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i
-                                                        class="fas fa-map-marker-alt"></i></span>
-                                                <input type="text" class="form-control" id="landmark" name="landmark"
-                                                    placeholder="Enter Landmark" required>
-                                            </div>
+                                        <div class="modal-footer">
+                                            <button class="btn btn-success"
+                                                onclick="saveUser('<?= $user['user_id'] ?>')">Save Changes</button>
+                                            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                                         </div>
-                                    </div>
-
-                                    <div class="row mb-4">
-                                        <div class="col-12 mb-3">
-                                            <label for="locationAddress" class="form-label required-field">Full
-                                                Address</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="fas fa-map-pin"></i></span>
-                                                <textarea class="form-control" id="locationAddress"
-                                                    name="locationAddress" rows="2" placeholder="Enter complete address"
-                                                    required></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row mb-4">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="status" class="form-label required-field">Status</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i
-                                                        class="fas fa-check-circle"></i></span>
-                                                <select class="form-select" id="status" name="status" required>
-                                                    <option value="Active" selected>Active</option>
-                                                    <option value="Inactive">Inactive</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="capacity" class="form-label">Capacity (optional)</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="fas fa-users"></i></span>
-                                                <input type="number" class="form-control" id="capacity" name="capacity"
-                                                    placeholder="Enter maximum capacity">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                    <div class="modal" tabindex="-1" role="dialog">
-                        <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Modal title</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    <input type="hidden" name="action" value="save">
-
-                                    
-                                    <div class="d-flex justify-content-end mt-4">
-                                        <button type="reset" class="btn btn-outline-secondary me-3">
-                                            <i class="fas fa-undo me-2"></i>Reset
-                                        </button>
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="fas fa-save me-2"></i>Save Center
-                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>             
-                </form>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-primary">Save changes</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
         </div>
     </main>
 
-    <!-- Bootstrap JS Bundle with Popper -->
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addUserForm">
+                        <!-- User ID Preview (read-only) -->
+                        <div class="form-floating mb-3">
+                            <input type="text" id="previewUserId" class="form-control form-control-lg bg-light fs-6"
+                                placeholder="User ID" readonly>
+                            <label for="previewUserId" class="text-secondary">User ID (auto-generated)</label>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control form-control-lg bg-light fs-6" id="addFullName"
+                                name="addFullName" placeholder="Full Name" required>
+                            <label for="addFullName" class="text-secondary">Full Name <i>Firstname/Lastname</i></label>
+                        </div>
+
+                        <!-- Role -->
+                        <div class="form-floating mb-3">
+                            <select name="role" id="addRole" class="form-select form-control-lg bg-light fs-6" required>
+                                <option value="" disabled selected>Select role</option>
+                                <option value="1">Admin</option>
+                                <option value="2">Inventory Clerk</option>
+                                <option value="3">Cashier</option>
+                            </select>
+                            <label for="addRole" class="text-secondary">Role</label>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control form-control-lg bg-light fs-6" id="addPassword"
+                                name="addPassword" placeholder="Password" required>
+                            <label for="addPassword" class="text-secondary">Password</label>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control form-control-lg bg-light fs-6"
+                                id="addConfirmPassword" name="addConfirmPassword" placeholder="Confirm Password"
+                                required>
+                            <label for="addConfirmPassword" class="text-secondary">Confirm Password</label>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button class="btn btn-primary" onclick="addUser()">Add User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Form validation
-        document.getElementById('evacuationForm').addEventListener('submit', function (e) {
-            const requiredFields = this.querySelectorAll('[required]');
-            let isValid = true;
+        function saveUser(userId) {
+            const form = document.querySelector(`.edit-user-form[data-user-id="${userId}"]`);
+            const fullName = form.querySelector('.full-name').value;
+            const roleId = form.querySelector('.role-id').value;
+            const password = form.querySelector('.password').value;
+            const confirmpassword = form.querySelector('.confirmpassword').value;
 
-            requiredFields.forEach(field => {
-                if (!field.value.trim()) {
-                    field.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    field.classList.remove('is-invalid');
-                }
+            // Client-side validation (optional)
+            if (!fullName || !roleId) {
+                return Swal.fire('Missing fields', 'Please fill in all required fields.', 'warning');
+            }
+
+            if (password !== confirmpassword) {
+                return Swal.fire('Password Mismatch', 'Passwords do not match.', 'error');
+            }
+
+            Swal.fire({
+                title: 'Saving changes...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
             });
 
-            if (!isValid) {
-                e.preventDefault();
-                alert('Please fill in all required fields.');
+            fetch('user_ajax_handler.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'update',
+                    user_id: userId,
+                    full_name: fullName,
+                    role_id: roleId,
+                    password: password,
+                    confirmpassword: confirmpassword
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Updated!', 'User information has been updated.', 'success')
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire('Update Failed', data.message || 'Could not update user.', 'error');
+                    }
+                })
+                .catch(() => {
+                    Swal.fire('Error', 'Something went wrong.', 'error');
+                });
+        }
+
+        function deleteUser(userId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'This user will be deactivated (not deleted).',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, deactivate it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('user_ajax_handler.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            action: 'soft_delete',
+                            user_id: userId
+                        })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Deactivated!', 'User has been deactivated.', 'success')
+                                    .then(() => location.reload());
+                            } else {
+                                Swal.fire('Failed', data.message || 'Deactivation failed.', 'error');
+                            }
+                        });
+                }
+            });
+        }
+        document.getElementById('addRole').addEventListener('change', function () {
+            const roleId = this.value;
+
+            fetch('user_ajax_handler.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'generate_id',
+                    role_id: roleId
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('previewUserId').value = data.user_id || 'USER-???';
+                });
+        });
+
+        document.getElementById('addUserModal').addEventListener('shown.bs.modal', function () {
+            const roleSelect = document.getElementById('addRole');
+            if (roleSelect.value) {
+                roleSelect.dispatchEvent(new Event('change')); // trigger generation
             }
         });
 
-        // Clear validation on input
-        document.querySelectorAll('input, select, textarea').forEach(element => {
-            element.addEventListener('input', function () {
-                if (this.hasAttribute('required') && this.value.trim()) {
-                    this.classList.remove('is-invalid');
-                }
+        function addUser() {
+            const fullName = document.getElementById('addFullName').value;
+            const roleId = document.getElementById('addRole').value;
+            const password = document.getElementById('addPassword').value;
+            const confirmpassword = document.getElementById('addConfirmPassword').value;
+            const userId = document.getElementById('previewUserId').value;
+
+            // Simple client-side validation
+            if (!fullName || !roleId || !password || !confirmpassword) {
+                return Swal.fire('All fields are required.', '', 'warning');
+            }
+
+            if (password !== confirmpassword) {
+                return Swal.fire('Passwords do not match.', '', 'error');
+            }
+
+            // Optional: Show loading
+            Swal.fire({
+                title: 'Adding user...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
             });
-        });
+
+            fetch('user_ajax_handler.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'add',
+                    user_id: userId,
+                    full_name: fullName,
+                    role_id: roleId,
+                    password: password,
+                    confirmpassword: confirmpassword
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('User added!', '', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', data.message || 'Failed to add user.', 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Error', 'Something went wrong.', 'error');
+                    console.error(err);
+                });
+        }
+
     </script>
 </body>
 

@@ -418,7 +418,7 @@
     <header class="header" id="header">
         <div class="header__container">
             <button class="">
-                       <?php echo "ADMIN" ?>
+                       <?php echo "INVENTORY CLERK" ?>
                     </button>
             <?php
                 date_default_timezone_set('Asia/Manila');
@@ -441,7 +441,7 @@
                     
                     <h3 class="sidebar__title">MAIN MENU</h3>
                     <div class="sidebar__list">
-                        <a href="dashboard.php" class="sidebar__link">
+                        <a href="clerk_dashboard.php" class="sidebar__link">
                             <i class="ri-dashboard-2-fill"></i>
                             <span>Dashboard</span>
                         </a>
@@ -451,26 +451,17 @@
                             <span>Inventory</span>
                         </a>
 
-                        <a href="#" class="sidebar__link">
+                        <a href="inventory.php" class="sidebar__link">
+                            <i class="ri-add-box-line"></i>
+                            <span>Products</span>
+                        </a>
+
+                        <a href="salesReport.php" class="sidebar__link">
                             <i class="ri-bar-chart-box-fill"></i>
                             <span>Sales Report</span>
                         </a>
-
-                        <a href="#" class="sidebar__link">
-                            <i class="ri-menu-2-fill"></i>
-                            <span>Point of Sale</span>
-                        </a>
                     </div>
                 </div>  
-                <div>
-                    <h3 class="sidebar__title">ADMIN</h3>
-                    <div class="sidebar__list">
-                        <a href="userManagement.php" class="sidebar__link">
-                            <i class="ri-user-fill"></i>
-                            <span>User Management</span>
-                        </a>
-                    </div>
-                </div>
             </div>
             <div class="sidebar__actions">
                 <div class="sidebar__user">

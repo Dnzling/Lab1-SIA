@@ -1,13 +1,15 @@
-<?php 
+<?php
 
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "Langkaan2_Evacuation";
+$dbhost = "localhost";
+$port = "3307";
+$dbuser = "root";
+$dbpass = "12345";
+$dbname = "quickgomart_db";
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+$mysqli = new mysqli($dbhost, $dbuser, $dbpass, $dbname, $port);
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if ($mysqli->connect_error) {
+    die("Connection failed: " . $mysqli->connect_error);
 }
-?>
+
+
